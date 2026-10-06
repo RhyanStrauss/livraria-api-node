@@ -1,47 +1,47 @@
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const repository = require('../repositories/LivrariaRepository');
 
+const JWT_SECRET = 'segredo_jwt_super_seguro';
+
 class AuthService {
-  async registrar({ nome, email, senha, role }) {
-    if (!nome || !email || !senha) {
-      throw { status: 400, message: "Campos obrigatórios ausentes: nome, email ou senha." };
+  async register(nome, email, senha) {
+    const usuarioExiste = repository.buscarUsuarioPorEmail(email);
+    if (usuarioExiste) {
+      throw new Error('E-mail já cadastrado');
     }
 
-    const usuarioExistente = repository.buscarUsuarioPorEmail(email);
-    if (usuarioExistente) {
-      throw { status: 409, message: "E-mail já cadastrado no sistema." };
-    }
+    const salt = await bcrypt.genSalt(10);
+    const senhaHash = await bcrypt.hash(senha, salt);
 
-    // Hash da senha com BCrypt (implementado no laboratório)
-    const senha_hash = senha; 
-
-    const novoUsuario = repository.salvarUsuario({
+    const novoUsuario = repository.criarUsuario({
       nome,
       email,
-      senha_hash,
-      role: role ? role.toUpperCase() : "USER"
+      senha: senhaHash
     });
 
-    const { senha_hash: _, ...usuarioRetorno } = novoUsuario;
-    return usuarioRetorno;
+    const { senha: _, ...usuarioSemSenha } = novoUsuario;
+    return usuarioSemSenha;
   }
 
-  async login({ email, senha }) {
-    if (!email || !senha) {
-      throw { status: 400, message: "E-mail e senha são obrigatórios." };
-    }
-
+  async login(email, senha) {
     const usuario = repository.buscarUsuarioPorEmail(email);
     if (!usuario) {
-      throw { status: 401, message: "Credenciais inválidas." };
+      throw new Error('Credenciais inválidas');
     }
 
-    // Conferência de hash e emissão de JWT (implementado no laboratório)
-    const tokenSimulado = `jwt-token-exemplo-${usuario.role}`;
+    const senhaValida = await bcrypt.compare(senha, usuario.senha);
+    if (!senhaValida) {
+      throw new Error('Credenciais inválidas');
+    }
 
-    return {
-      usuario: { id: usuario.id, nome: usuario.nome, role: usuario.role },
-      token: tokenSimulado
-    };
+    const token = jwt.sign(
+      { id: usuario.id, email: usuario.email, role: usuario.role, nome: usuario.nome },
+      JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+
+    return { token };
   }
 }
 

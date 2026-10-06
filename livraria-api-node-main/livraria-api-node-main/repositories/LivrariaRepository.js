@@ -1,21 +1,26 @@
 const fs = require('fs');
 const path = require('path');
+const bcrypt = require('bcryptjs');
 
 class LivrariaRepository {
   constructor() {
-    // Garante que o arquivo fique na raiz do projeto (onde o server.js roda)
-    this.dbPath = path.resolve(process.cwd(), 'database.txt');
+    this.dbPath = path.resolve(process.cwd(), 'database.json');
     this._garantirArquivoInicial();
   }
 
   _obterDadosPadrao() {
+    // Hashes pré-gerados para admin123 e leitor123
+    const salt = bcrypt.genSaltSync(10);
+    const hashAdmin = bcrypt.hashSync('admin123', salt);
+    const hashLeitor = bcrypt.hashSync('leitor123', salt);
+
     return {
       usuarios: [
-        { id: 1, nome: "Admin", email: "admin@livraria.com", senha_hash: "$2b$10$9v3m0C1O6mK9BqV3j0Xg9.1fG/3zR1i5e.7F6o4D1u1G2H3J4K5L6", role: "ADMIN" },
-        { id: 2, nome: "Leitor", email: "leitor@gmail.com", senha_hash: "$2b$10$9v3m0C1O6mK9BqV3j0Xg9.1fG/3zR1i5e.7F6o4D1u1G2H3J4K5L6", role: "USER" }
+        { id: 1, nome: "Admin", email: "admin@livraria.com", senha: hashAdmin, role: "ADMIN" },
+        { id: 2, nome: "Leitor", email: "leitor@gmail.com", senha: hashLeitor, role: "USER" }
       ],
       autores: [
-        { id: 1, nome: "Machado de Assis", nacionalidade: "Brasileiro" }
+        { id: 1, nome: "Machado de Assis", nacionalidade: "Brasileira" }
       ],
       livros: [
         {
@@ -24,7 +29,7 @@ class LivrariaRepository {
           ano: 1899,
           autor_id: 1,
           comentarios: [
-            { id: 1, autor_nome: "Leitor", texto: "Clássico indispensável." }
+            { id: 1, autor_nome: "Leitor", texto: "Clássico imperdível!" }
           ]
         }
       ]
@@ -34,91 +39,95 @@ class LivrariaRepository {
   _garantirArquivoInicial() {
     try {
       if (!fs.existsSync(this.dbPath)) {
-        this.salvar(this._obterDadosPadrao());
-      } else {
-        const conteudo = fs.readFileSync(this.dbPath, 'utf-8').trim();
-        if (!conteudo) {
-          this.salvar(this._obterDadosPadrao());
-        }
+        fs.writeFileSync(this.dbPath, JSON.stringify(this._obterDadosPadrao(), null, 2), 'utf-8');
       }
-    } catch (err) {
-      console.error("Erro ao inicializar database.txt:", err);
+    } catch (e) {
+      console.error('Erro ao ler ou criar database.json:', e.message);
     }
   }
 
-  carregar() {
+  _ler() {
+    this._garantirArquivoInicial();
     try {
-      this._garantirArquivoInicial();
-      const rawData = fs.readFileSync(this.dbPath, 'utf-8');
-      return JSON.parse(rawData);
+      const data = fs.readFileSync(this.dbPath, 'utf-8');
+      return JSON.parse(data);
     } catch (e) {
       return this._obterDadosPadrao();
     }
   }
 
-  salvar(dados) {
+  _salvar(dados) {
     fs.writeFileSync(this.dbPath, JSON.stringify(dados, null, 2), 'utf-8');
   }
 
-  // Métodos de Usuários
+  // Métodos de Usuário
   buscarUsuarioPorEmail(email) {
-    const db = this.carregar();
-    return db.usuarios.find(u => u.email === email) || null;
+    const db = this._ler();
+    return db.usuarios.find(u => u.email === email);
   }
 
-  salvarUsuario(usuario) {
-    const db = this.carregar();
-    const novoUsuario = { id: Date.now(), ...usuario };
+  criarUsuario(usuario) {
+    const db = this._ler();
+    const novoUsuario = {
+      id: db.usuarios.length ? Math.max(...db.usuarios.map(u => u.id)) + 1 : 1,
+      role: 'USER',
+      ...usuario
+    };
     db.usuarios.push(novoUsuario);
-    this.salvar(db);
+    this._salvar(db);
     return novoUsuario;
-  }
-
-  // Métodos de Autores
-  listarAutores() {
-    return this.carregar().autores || [];
-  }
-
-  buscarAutorPorId(id) {
-    return (this.carregar().autores || []).find(a => a.id === Number(id)) || null;
-  }
-
-  salvarAutor(autor) {
-    const db = this.carregar();
-    const novoAutor = { id: Date.now(), ...autor };
-    db.autores.push(novoAutor);
-    this.salvar(db);
-    return novoAutor;
   }
 
   // Métodos de Livros
   listarLivros() {
-    return this.carregar().livros || [];
+    return this._ler().livros;
   }
 
   buscarLivroPorId(id) {
-    return (this.carregar().livros || []).find(l => l.id === Number(id)) || null;
+    const db = this._ler();
+    return db.livros.find(l => l.id === parseInt(id));
   }
 
-  salvarLivro(livro) {
-    const db = this.carregar();
-    const novoLivro = { id: Date.now(), ...livro, comentarios: [] };
+  criarLivro(livro) {
+    const db = this._ler();
+    const novoLivro = {
+      id: db.livros.length ? Math.max(...db.livros.map(l => l.id)) + 1 : 1,
+      comentarios: [],
+      ...livro
+    };
     db.livros.push(novoLivro);
-    this.salvar(db);
+    this._salvar(db);
     return novoLivro;
   }
 
   adicionarComentario(livroId, comentario) {
-    const db = this.carregar();
-    const livro = db.livros.find(l => l.id === Number(livroId));
+    const db = this._ler();
+    const livro = db.livros.find(l => l.id === parseInt(livroId));
     if (!livro) return null;
 
-    if (!livro.comentarios) livro.comentarios = [];
-
-    const novoComentario = { id: Date.now(), ...comentario };
+    const novoComentario = {
+      id: livro.comentarios.length ? Math.max(...livro.comentarios.map(c => c.id)) + 1 : 1,
+      ...comentario
+    };
     livro.comentarios.push(novoComentario);
-    this.salvar(db);
+    this._salvar(db);
     return novoComentario;
+  }
+
+  // Métodos de Autores
+  listarAutores() {
+    return this._ler().autores;
+  }
+
+  criarAutor(autor) {
+    const db = this._ler();
+    const novoAutor = {
+      id: db.autores.length ? Math.max(...db.autores.map(a => a.id)) + 1 : 1,
+      ...autor
+    };
+    db.autores.push(novoAutor);
+    this._salvar(db);
+    return novoAutor;
   }
 }
 

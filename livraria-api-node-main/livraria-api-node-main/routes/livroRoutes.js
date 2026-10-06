@@ -1,17 +1,16 @@
-const { Router } = require('express');
-const controller = require('../controllers/LivroController');
-const { autenticarToken, exigirRole } = require('../middlewares/authMiddleware');
+const express = require('express');
+const router = express.Router();
+const livroController = require('../controllers/LivroController');
+const { autenticarToken, autorizarPerfil } = require('../middlewares/authMiddleware');
 
-const router = Router();
+// Públicos
+router.get('/', livroController.listar);
+router.get('/:id', livroController.buscarPorId);
 
-// Rotas Públicas
-router.get('/', (req, res, next) => controller.index(req, res, next));
-router.get('/:id', (req, res, next) => controller.show(req, res, next));
+// Autenticado (USER ou ADMIN)
+router.post('/:id/comentarios', autenticarToken, autorizarPerfil('USER', 'ADMIN'), livroController.adicionarComentario);
 
-// Rota Restrita: ADMIN
-router.post('/', autenticarToken, exigirRole('ADMIN'), (req, res, next) => controller.store(req, res, next));
-
-// Rota Restrita: Usuário Autenticado
-router.post('/:id/comentarios', autenticarToken, (req, res, next) => controller.storeComment(req, res, next));
+// Exclusivo ADMIN
+router.post('/', autenticarToken, autorizarPerfil('ADMIN'), livroController.criar);
 
 module.exports = router;

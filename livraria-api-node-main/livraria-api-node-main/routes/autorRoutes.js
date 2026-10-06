@@ -1,10 +1,9 @@
-const { Router } = require('express');
-const controller = require('../controllers/AutorController');
-const { autenticarToken, exigirRole } = require('../middlewares/authMiddleware');
+const express = require('express');
+const router = express.Router();
+const autorController = require('../controllers/AutorController');
+const { autenticarToken, autorizarPerfil } = require('../middlewares/authMiddleware');
 
-const router = Router();
-
-router.get('/', (req, res, next) => controller.index(req, res, next));
-router.post('/', autenticarToken, exigirRole('ADMIN'), (req, res, next) => controller.store(req, res, next));
+// Exclusivo ADMIN
+router.post('/', autenticarToken, autorizarPerfil('ADMIN'), autorController.criar);
 
 module.exports = router;
