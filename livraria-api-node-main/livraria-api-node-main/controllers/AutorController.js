@@ -1,20 +1,27 @@
-const autorService = require('../services/AutorService');
+const repository = require('../repositories/LivrariaRepository');
 
 class AutorController {
-  index(req, res, next) {
+  criar(req, res) {
     try {
-      return res.status(200).json(autorService.listarTodos());
+      const { nome, nacionalidade } = req.body;
+
+      if (!nome) {
+        return res.status(400).json({ mensagem: 'O campo nome é obrigatório' });
+      }
+
+      const novoAutor = repository.criarAutor({ nome, nacionalidade });
+      return res.status(201).json(novoAutor);
     } catch (error) {
-      next(error);
+      return res.status(500).json({ mensagem: error.message });
     }
   }
 
-  store(req, res, next) {
+  listar(req, res) {
     try {
-      const novoAutor = autorService.criar(req.body);
-      return res.status(201).json(novoAutor);
+      const autores = repository.listarAutores();
+      return res.status(200).json(autores);
     } catch (error) {
-      next(error);
+      return res.status(500).json({ mensagem: error.message });
     }
   }
 }

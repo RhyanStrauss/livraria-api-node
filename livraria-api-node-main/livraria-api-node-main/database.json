@@ -1,0 +1,45 @@
+{
+  "usuarios": [
+    {
+      "id": 1,
+      "nome": "Admin",
+      "email": "admin@livraria.com",
+      "senha": "$2b$10$VO/Ik1xg6h015xV4BgaiLOqZaJZi5rhEHYmTTSd1VFvdYTR83xLd6",
+      "role": "ADMIN"
+    },
+    {
+      "id": 2,
+      "nome": "Leitor",
+      "email": "leitor@gmail.com",
+      "senha": "$2b$10$VO/Ik1xg6h015xV4BgaiLOR/Bz0MiGZvKagKdFXRntZp7gtnNeBy2",
+      "role": "USER"
+    }
+  ],
+  "autores": [
+    {
+      "id": 1,
+      "nome": "Machado de Assis",
+      "nacionalidade": "Brasileira"
+    },
+    {
+      "id": 2,
+      "nome": "Machado de Assis",
+      "nacionalidade": "Brasileira"
+    }
+  ],
+  "livros": [
+    {
+      "id": 1,
+      "titulo": "Dom Casmurro",
+      "ano": 1899,
+      "autor_id": 1,
+      "comentarios": [
+        {
+          "id": 1,
+          "autor_nome": "Leitor",
+          "texto": "Clássico imperdível!"
+        }
+      ]
+    }
+  ]
+}

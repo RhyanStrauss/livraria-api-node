@@ -3,14 +3,12 @@ const router = express.Router();
 const livroController = require('../controllers/LivroController');
 const { autenticarToken, autorizarPerfil } = require('../middlewares/authMiddleware');
 
-// Públicos
-router.get('/', livroController.listar);
-router.get('/:id', livroController.buscarPorId);
+// Rotas públicas
+router.get('/', (req, res) => livroController.listar(req, res));
+router.get('/:id', (req, res) => livroController.buscarPorId(req, res));
 
-// Autenticado (USER ou ADMIN)
-router.post('/:id/comentarios', autenticarToken, autorizarPerfil('USER', 'ADMIN'), livroController.adicionarComentario);
-
-// Exclusivo ADMIN
-router.post('/', autenticarToken, autorizarPerfil('ADMIN'), livroController.criar);
+// Rotas protegidas
+router.post('/:id/comentarios', autenticarToken, autorizarPerfil('USER', 'ADMIN'), (req, res) => livroController.adicionarComentario(req, res));
+router.post('/', autenticarToken, autorizarPerfil('ADMIN'), (req, res) => livroController.criar(req, res));
 
 module.exports = router;
