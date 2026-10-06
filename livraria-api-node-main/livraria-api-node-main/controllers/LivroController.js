@@ -1,42 +1,56 @@
 const livroService = require('../services/LivroService');
 
 class LivroController {
-  index(req, res, next) {
+  listar(req, res) {
     try {
-      return res.status(200).json(livroService.listarTodos());
+      const livros = livroService.listar();
+      return res.status(200).json(livros);
     } catch (error) {
-      next(error);
+      return res.status(500).json({ erro: error.message });
     }
   }
 
-  show(req, res, next) {
+  buscarPorId(req, res) {
     try {
-      return res.status(200).json(livroService.buscarPorId(req.params.id));
+      const { id } = req.params;
+      const livro = livroService.buscarPorId(id);
+      if (!livro) {
+        return res.status(404).json({ erro: 'Livro não encontrado' });
+      }
+      return res.status(200).json(livro);
     } catch (error) {
-      next(error);
+      return res.status(500).json({ erro: error.message });
     }
   }
 
-  store(req, res, next) {
+  criar(req, res) {
     try {
       const novoLivro = livroService.criar(req.body);
       return res.status(201).json(novoLivro);
     } catch (error) {
-      next(error);
+      const status = error.status || 400;
+      return res.status(status).json({ erro: error.message || error.erro });
     }
   }
 
-  storeComment(req, res, next) {
+  adicionarComentario(req, res) {
     try {
-      const comentario = livroService.adicionarComentario(req.params.id, {
-        texto: req.body.texto,
-        usuario: req.usuario
+      const { id } = req.params;
+      const { texto } = req.body;
+      const usuarioNome = req.usuario ? req.usuario.nome : 'Anônimo';
+
+      const livroAtualizado = livroService.adicionarComentario(id, {
+        usuario: usuarioNome,
+        texto
       });
-      return res.status(201).json(comentario);
+
+      return res.status(200).json(livroAtualizado);
     } catch (error) {
-      next(error);
+      const status = error.status || 400;
+      return res.status(status).json({ erro: error.message || error.erro });
     }
   }
 }
 
+// ATENÇÃO: Exportar uma instância com 'new'
 module.exports = new LivroController();

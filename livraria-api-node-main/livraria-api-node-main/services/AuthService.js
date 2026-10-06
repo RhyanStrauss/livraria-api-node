@@ -1,47 +1,61 @@
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcryptjs'); // Mantido bcryptjs para compatibilidade sem compilação nativa no Windows
 const jwt = require('jsonwebtoken');
 const repository = require('../repositories/LivrariaRepository');
 
-const JWT_SECRET = 'segredo_jwt_super_seguro';
+const JWT_SECRET = process.env.JWT_SECRET || "chave_super_secreta_livraria_2026";
+const SALT_ROUNDS = 10;
 
 class AuthService {
-  async register(nome, email, senha) {
-    const usuarioExiste = repository.buscarUsuarioPorEmail(email);
-    if (usuarioExiste) {
-      throw new Error('E-mail já cadastrado');
+  async registrar({ nome, email, senha, role }) {
+    if (!nome || !email || !senha) {
+      throw { status: 400, message: "Campos obrigatórios ausentes: nome, email ou senha." };
     }
 
-    const salt = await bcrypt.genSalt(10);
-    const senhaHash = await bcrypt.hash(senha, salt);
+    const usuarioExistente = repository.buscarUsuarioPorEmail(email);
+    if (usuarioExistente) {
+      throw { status: 409, message: "E-mail já cadastrado no sistema." };
+    }
+
+    const senha_hash = await bcrypt.hash(senha, SALT_ROUNDS);
 
     const novoUsuario = repository.criarUsuario({
       nome,
       email,
-      senha: senhaHash
+      senha: senha_hash,
+      role: role ? role.toUpperCase() : "USER"
     });
 
-    const { senha: _, ...usuarioSemSenha } = novoUsuario;
-    return usuarioSemSenha;
+    const { senha: _, senha_hash: __, ...usuarioRetorno } = novoUsuario;
+    return usuarioRetorno;
   }
 
-  async login(email, senha) {
+  async login({ email, senha }) {
+    if (!email || !senha) {
+      throw { status: 400, message: "E-mail e senha são obrigatórios." };
+    }
+
     const usuario = repository.buscarUsuarioPorEmail(email);
     if (!usuario) {
-      throw new Error('Credenciais inválidas');
+      throw { status: 401, message: "Credenciais inválidas." };
     }
 
-    const senhaValida = await bcrypt.compare(senha, usuario.senha);
+    const senhaValida = await bcrypt.compare(senha, usuario.senha_hash || usuario.senha);
     if (!senhaValida) {
-      throw new Error('Credenciais inválidas');
+      throw { status: 401, message: "Credenciais inválidas." };
     }
 
-    const token = jwt.sign(
-      { id: usuario.id, email: usuario.email, role: usuario.role, nome: usuario.nome },
-      JWT_SECRET,
-      { expiresIn: '1h' }
-    );
+    const payload = {
+      sub: usuario.id,
+      nome: usuario.nome,
+      role: usuario.role
+    };
 
-    return { token };
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '2h' });
+
+    return {
+      usuario: { id: usuario.id, nome: usuario.nome, role: usuario.role },
+      token
+    };
   }
 }
 

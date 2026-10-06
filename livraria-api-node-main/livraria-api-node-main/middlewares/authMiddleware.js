@@ -1,38 +1,32 @@
 const jwt = require('jsonwebtoken');
-const JWT_SECRET = 'segredo_jwt_super_seguro';
+const JWT_SECRET = process.env.JWT_SECRET || "chave_super_secreta_livraria_2026";
 
 function autenticarToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) {
-    return res.status(401).json({ mensagem: 'Token de acesso não fornecido' });
+    return res.status(401).json({ erro: "Acesso negado: Token de autenticação não fornecido." });
   }
 
-  jwt.verify(token, JWT_SECRET, (err, usuario) => {
+  jwt.verify(token, JWT_SECRET, (err, usuarioDecodificado) => {
     if (err) {
-      return res.status(401).json({ mensagem: 'Token inválido ou expirado' });
+      return res.status(401).json({ erro: "Token inválido, corrompido ou expirado." });
     }
-    req.usuario = usuario;
+    req.usuario = usuarioDecodificado;
     next();
   });
 }
 
-function autorizarPerfil(...perfisPermitidos) {
+function exigirRole(roleEsperada) {
   return (req, res, next) => {
-    if (!req.usuario) {
-      return res.status(401).json({ mensagem: 'Não autenticado' });
+    if (!req.usuario || req.usuario.role !== roleEsperada) {
+      return res.status(403).json({ 
+        erro: `Acesso proibido: Privilégio de ${roleEsperada} exigido para esta operação.` 
+      });
     }
-
-    if (!perfisPermitidos.includes(req.usuario.role)) {
-      return res.status(403).json({ mensagem: 'Acesso negado: perfil insuficiente' });
-    }
-
     next();
   };
 }
 
-module.exports = {
-  autenticarToken,
-  autorizarPerfil
-};
+module.exports = { autenticarToken, exigirRole };

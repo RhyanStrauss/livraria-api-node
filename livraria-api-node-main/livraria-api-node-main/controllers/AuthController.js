@@ -3,21 +3,21 @@ const authService = require('../services/AuthService');
 class AuthController {
   async register(req, res) {
     try {
-      const { nome, email, senha } = req.body;
-      const usuario = await authService.register(nome, email, senha);
+      const usuario = await authService.registrar(req.body);
       return res.status(201).json(usuario);
     } catch (error) {
-      return res.status(400).json({ mensagem: error.message });
+      const status = error.status || 400;
+      return res.status(status).json({ erro: error.message || error.erro });
     }
   }
 
   async login(req, res) {
     try {
-      const { email, senha } = req.body;
-      const resultado = await authService.login(email, senha);
+      const resultado = await authService.login(req.body);
       return res.status(200).json(resultado);
     } catch (error) {
-      return res.status(401).json({ mensagem: error.message });
+      const status = error.status || 401;
+      return res.status(status).json({ erro: error.message || error.erro });
     }
   }
 }
